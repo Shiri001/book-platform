@@ -1,0 +1,14 @@
+[
+  { "id": 1, "title": "The Great Gatsby", "author": "F. Scott Fitzgerald", "genre": "Classic", "description": "A story of wealth, love, and the American Dream in 1920s New York." },
+  { "id": 2, "title": "To Kill a Mockingbird", "author": "Harper Lee", "genre": "Fiction", "description": "A young girl learns about racism, justice, and morality through her father's experiences as a lawyer." },
+  { "id": 3, "title": "1984", "author": "George Orwell", "genre": "Dystopian", "description": "A dystopian story about a society controlled by an authoritarian government that monitors its citizens." },
+  { "id": 4, "title": "Pride and Prejudice", "author": "Jane Austen", "genre": "Romance", "description": "A classic romance exploring love, marriage, social class, and misunderstandings." },
+  { "id": 5, "title": "The Hobbit", "author": "J.R.R. Tolkien", "genre": "Fantasy", "description": "Bilbo Baggins joins a group of dwarves on an adventurous journey to reclaim their homeland." },
+  { "id": 6, "title": "The Alchemist", "author": "Paulo Coelho", "genre": "Adventure", "description": "A young shepherd travels across the desert in search of treasure while discovering his purpose in life." },
+  { "id": 7, "title": "Harry Potter and the Philosopher's Stone", "author": "J.K. Rowling", "genre": "Fantasy", "description": "A young orphan discovers that he is a wizard and begins his magical journey at Hogwarts." },
+  { "id": 8, "title": "The Da Vinci Code", "author": "Dan Brown", "genre": "Mystery", "description": "A symbologist and a cryptologist investigate a mysterious murder and uncover a hidden secret." },
+  { "id": 9, "title": "The Kite Runner", "author": "Khaled Hosseini", "genre": "Historical Fiction", "description": "A powerful story about friendship, betrayal, guilt, and redemption set against the history of Afghanistan." },
+  { "id": 10, "title": "Atomic Habits", "author": "James Clear", "genre": "Self-Help", "description": "A practical guide to building good habits and making small changes that lead to remarkable results." },
+  { "id": 11, "title": "The Silent Patient", "author": "Alex Michaelides", "genre": "Thriller", "description": "A psychological thriller about a woman who stops speaking after being accused of murdering her husband." },
+  { "id": 12, "title": "The Book Thief", "author": "Markus Zusak", "genre": "Historical Fiction", "description": "A young girl finds comfort in books while living in Nazi Germany during World War II." }
+]
