@@ -7,9 +7,19 @@ function BookDetail(){
 
     useEffect(() => {
         fetch(`http://localhost:3000/api/books/${id}`)
-        .then(res => res.json())
-        .then(data => setBook(data));
+        .then(res => {
+            if(!res.ok){
+                throw new Error("Not Found")
+            }
+            return res.json();
+        })
+        .then(data => setBook(data))
+        .catch(() => setBook("not-found"));
     }, [id])
+
+    if(book === "not-found"){
+        return <p>Book Not Found</p>
+    }
 
     if(!book){
         return <p>Loading....</p>
