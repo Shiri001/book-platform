@@ -2,7 +2,7 @@ import BookList from './BookList';
 import BookDetail from './BookDetail';
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
-function App() {
+function App() { // a react component return JSX describing its UI
   return (
     <BrowserRouter>
       <Routes>
@@ -15,3 +15,5 @@ function App() {
 }
 
 export default App;
+
+

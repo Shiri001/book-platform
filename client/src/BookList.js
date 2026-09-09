@@ -6,7 +6,7 @@ function BookList() {
   const [books, setBooks] = useState([]);
 
   useEffect(() => {
-    fetch("http://localhost:3000/api/books")
+    fetch("http://localhost:3000/api/books")  // React -> Fetch() -> Express -> JSON -> React
       .then(res => res.json())
       .then(data => setBooks(data));
   }, []);
