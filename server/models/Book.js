@@ -5,28 +5,16 @@ const sequelize = require("../db")
 
 
 const Book = sequelize.define("Book", {
-    title: {
+    googleBooksId: {
         type: DataTypes.STRING,
-        allowNull: false
+        unique: true
     },
-
-    author: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-
-    genre: {
-        type: DataTypes.STRING,
-    },
-    
-    description: {
-        type: DataTypes.TEXT
-    },
-
-    rating: {
-        type: DataTypes.FLOAT
-    }
-
-})
+    title: DataTypes.STRING,
+    author: DataTypes.STRING,
+    genre: DataTypes.STRING,
+    description: DataTypes.TEXT,
+    coverImageUrl: DataTypes.STRING,
+    averageRating: DataTypes.FLOAT
+});
 
 module.exports = Book;
