@@ -27,7 +27,15 @@ function BookDetail(){
     return(
         <div>
             <h1>{book.title}</h1>
+            {book.coverImageUrl && (
+                <img
+                    src={book.coverImageUrl}
+                    alt={book.title}
+                    width="200"
+                />
+            )}
             <p>By {book.author}</p>
+            <p>Rating: {book.averageRating || "Not available"}</p>
             <p>{book.description}</p>
         </div>
     )
