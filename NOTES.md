@@ -57,10 +57,26 @@
   - Currently single-user; duplicate additions are allowed. When JWT/Auth is added, enforce composite unique index `(userId, bookId)` or use Sequelize `findOrCreate`.
   - Future support for `PUT /api/shelf/:id` to transition reading progress (`want-to-read` -> `reading` -> `finished`).
 
+### Day 9: ML Workspace Setup & Weighted Feature Engineering
+- **ML Environment Setup**:
+  - Initialized isolated ML environment in `ml/` with `pandas`, `numpy`, and `scikit-learn`.
+  - Configured `.gitignore` to cleanly exclude `venv/`, `__pycache__/`, and serialized model artifacts (`*.pkl`, `*.joblib`).
+  - Added `ml/requirements.txt` for reproducibility.
+- **Data Ingestion & Cleaning (`ml/data_prep.py`)**:
+  - Built `load_and_prep_data` pipeline.
+  - Handled missing values (`NaN`) using `.fillna('')` across text columns to prevent null-poisoning during concatenation.
+  - Normalized genre tags by replacing comma delimiters with whitespace.
+- **Weighted "Content Soup" Feature Engineering**:
+  - *Dilemma*: Plot descriptions average ~80 words while author and genres average 2-4 words. Naive bag-of-words / TF-IDF would allow noisy plot vocabulary to overpower author/genre affinity.
+  - *Solution*: Implemented Option B (Weighted Keywords):
+    $$\text{content\_soup} = (\text{Author} \times 3) + (\text{Genres} \times 2) + (\text{Description} \times 1)$$
+  - *Mathematical Impact*: Artificially increases Term Frequency (TF) for high-intent attributes, multiplying their contribution in cosine similarity dot products without requiring multiple vector spaces.
+  - Verified pipeline output on `ml/goodreads_sample.csv`.
+
 ---
 
 ## 🎯 3. Upcoming Milestones
-- **Day 9**: Recommender Engine setup — Goodreads dataset curation, text cleaning, and `content_soup` feature engineering.
-- **Day 10**: TF-IDF Baseline + Cosine Similarity computation.
-- **Day 11**: Dense semantic embeddings with `all-MiniLM-L6-v2`.
-- **Day 12**: Generalization validation against the 440-book PostgreSQL catalog.
+- **Day 10**: TF-IDF Vectorization & Cosine Similarity Matrix Computation (`ml/recommender.py`).
+- **Day 11**: Dense Semantic Embeddings (`all-MiniLM-L6-v2` / SentenceTransformers).
+- **Day 12**: Generalization Validation & Integration against PostgreSQL catalog.
+- **Day 13**: FastAPI Recommendation Microservice.

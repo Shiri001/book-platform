@@ -51,11 +51,14 @@ This project is architected as a distributed multi-service application to reflec
 - [x] **Day 6**: Google Books API data ingestion pipeline (normalization, quality filtering, deduplication via `Set`, bulk insert of 440 books).
 - [x] **Day 7**: SQL pagination (`findAndCountAll`), case-insensitive genre filtering (`Op.iLike`), relational Shelf model.
 - [x] **Day 8**: Full-stack Shelf flow (React `POST /api/shelf`, optimistic state feedback, `Shelf.js` page rendering relational JOINs, DB maintenance utilities).
-- [ ] **Day 9–13**: Offline ML Recommender (Goodreads dataset, TF-IDF baseline vs `all-MiniLM-L6-v2` dense embeddings, catalog generalization validation).
-- [ ] **Day 14–16**: FastAPI microservice serving recommendations with in-memory caching.
-- [ ] **Day 17–19**: Express hydration layer & React recommendation carousel.
-- [ ] **Day 20–23**: Sentiment analysis pipeline (VADER vs DistilBERT) & "Rating vs Sentiment Mismatch" detection.
-- [ ] **Day 24–28**: Deployment across Render/Railway, Vercel, and Neon PostgreSQL.
+- [x] **Day 9**: ML workspace initialization & weighted keyword feature engineering (`content_soup` with 3x author, 2x genre weighting).
+- [ ] **Day 10**: TF-IDF Baseline Recommender with Cosine Similarity (`ml/recommender.py`).
+- [ ] **Day 11**: Dense Semantic Embeddings (`all-MiniLM-L6-v2`).
+- [ ] **Day 12**: Generalization Validation & PostgreSQL Catalog Scoring.
+- [ ] **Day 13–15**: FastAPI recommendation microservice with in-memory caching.
+- [ ] **Day 16–18**: Express hydration layer & React recommendation carousel.
+- [ ] **Day 19–22**: Sentiment analysis pipeline (VADER vs DistilBERT) & "Rating vs Sentiment Mismatch" detection.
+- [ ] **Day 23–28**: Production deployment across Render/Railway, Vercel, and Neon PostgreSQL.
 
 ---
 
@@ -75,4 +78,14 @@ cd client
 npm install
 npm start
 # Runs on http://localhost:3000 (or http://localhost:3001)
+```
+
+### 3. Machine Learning (Recommender)
+```bash
+cd ml
+python -m venv venv
+# On Windows:
+.\venv\Scripts\activate
+pip install -r requirements.txt
+python data_prep.py
 ```
