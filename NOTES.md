@@ -106,7 +106,28 @@
 
 ---
 
-## 🎯 3. Upcoming Milestones
-- **Day 12**: Generalization Validation & Integration against the 440-book PostgreSQL Catalog.
-- **Day 13–15**: FastAPI Recommendation Microservice with In-Memory Model Caching.
-- **Day 16–18**: Node.js/Express Hydration Layer & React Recommendation Carousel.
+## 🎯 3. Upcoming Milestones & System Architecture
+
+### Phase A: Recommender Productionization (Days 12–13)
+- **Day 12**: Generalization Validation & Integration against the 440-book PostgreSQL Catalog (Hybrid scaling).
+- **Day 13**: FastAPI Recommendation Microservice serving serialized transformer and TF-IDF models with in-memory caching.
+
+### Phase B: Authentication & User Isolation (Days 14–15)
+- **Google OAuth 2.0 Sign-In**: Direct Google Login integration issuing JWT sessions.
+- **Relational User Modeling**: Connect shelves and reading history specifically to authenticated `userId`s in PostgreSQL (replacing anonymous test shelf).
+
+### Phase C: Generative AI RAG Chatbot (Days 16–17)
+- **RAG Architecture**:
+  - *Retriever*: Our `all-MiniLM-L6-v2` dense embeddings pipeline retrieving top $K$ relevant book dossiers.
+  - *Generator*: Google Gemini LLM API grounded on retrieved catalog context.
+- **Two Chat Modes**:
+  1. *Catalog Concierge*: Natural-language discovery queries across the whole catalog.
+  2. *Literary Companion*: Grounded Q&A on specific book pages (themes, plot analysis, character motivations).
+
+### Phase D: Frontend Experience & UI Assembly (Days 18–21)
+- **Collaborative Flow**: User drives UX/visual direction; AI implements React components; User masters the core state/data flow basics.
+- **Key Features**:
+  - Clean discovery feed & recommendation carousels.
+  - Persistent auth state with Google Avatar/Profile.
+  - Interactive AI Chat drawer.
+  - Personal Shelf manager with reading status tabs (*Want to Read*, *Reading*, *Finished*).
