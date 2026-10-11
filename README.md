@@ -53,7 +53,7 @@ This project is architected as a distributed multi-service application to reflec
 - [x] **Day 8**: Full-stack Shelf flow (React `POST /api/shelf`, optimistic state feedback, `Shelf.js` page rendering relational JOINs, DB maintenance utilities).
 - [x] **Day 9**: ML workspace initialization & weighted keyword feature engineering (`content_soup` with 3x author, 2x genre weighting).
 - [x] **Day 10**: TF-IDF Baseline Recommender with `linear_kernel` Cosine Similarity & `joblib` artifact serialization (`ml/recommender.py`).
-- [ ] **Day 11**: Dense Semantic Embeddings (`all-MiniLM-L6-v2`) & semantic similarity comparison.
+- [x] **Day 11**: Dense Semantic Embeddings (`all-MiniLM-L6-v2`) & comparative benchmark (`ml/benchmark.py`).
 - [ ] **Day 12**: Generalization Validation & PostgreSQL Catalog Scoring.
 - [ ] **Day 13–15**: FastAPI recommendation microservice with in-memory caching.
 - [ ] **Day 16–18**: Express hydration layer & React recommendation carousel.

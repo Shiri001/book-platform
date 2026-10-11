@@ -89,9 +89,24 @@
 - **Scalability Trade-Off Drill**:
   - Full matrix space complexity is $\mathcal{O}(N^2)$. Viable for catalogs up to ~50,000 items in memory; large-scale catalogs ($10^6$ items) require vector indexing (ANN / FAISS / HNSW).
 
+### Day 11: Dense Semantic Embeddings (`all-MiniLM-L6-v2`) & Lexical Gap Benchmarking
+- **SentenceTransformers Pipeline (`ml/embeddings_recommender.py`)**:
+  - Integrated `all-MiniLM-L6-v2` (6 transformer layers, 384-dimensional dense latent vectors).
+  - Encoded `content_soup` via mean-pooling into dense continuous vector space $\mathbb{R}^{384}$.
+  - Computed pairwise cosine similarity across continuous representations.
+  - Serialized model artifacts to `embeddings_model.joblib`.
+- **Side-by-Side Benchmark (`ml/benchmark.py`)**:
+  - Engineered dual-model evaluation harness comparing TF-IDF vs SentenceTransformer retrieval.
+  - *Key Empirical Finding*: Discovered TF-IDF's failure on semantic synonyms ("Lexical Gap"). 
+    - For *The Hunger Games*, TF-IDF ranked *The Book Thief* and *Harry Potter* due to surface word overlap (*"death"*, *"young adult"*).
+    - SentenceTransformers ranked *Animal Farm* (#1, 0.335 similarity) by capturing latent thematic concepts of totalitarian oppression, propaganda, and dystopian rebellion despite completely disjoint plot vocabularies.
+  - *Sparsity Collapse Observation*: On unique vocabularies (*The Hitchhiker's Guide to the Galaxy*), TF-IDF similarity scores degraded to near-zero (~0.04-0.05) due to high-dimensional orthogonality, while dense embeddings maintained stable similarity geometry (~0.25-0.27).
+- **Placement Defense Takeaway**:
+  - Sparse lexical matching provides exact keyword precision and $\mathcal{O}(1)$ CPU inference; dense embeddings provide thematic semantic recall. In production, this justifies modern **Hybrid Search** (combining sparse BM25/TF-IDF with dense vector search).
+
 ---
 
 ## 🎯 3. Upcoming Milestones
-- **Day 11**: Dense Semantic Embeddings (`all-MiniLM-L6-v2` / SentenceTransformers) vs Sparse TF-IDF comparison.
-- **Day 12**: Generalization Validation & Integration against PostgreSQL catalog.
-- **Day 13**: FastAPI Recommendation Microservice.
+- **Day 12**: Generalization Validation & Integration against the 440-book PostgreSQL Catalog.
+- **Day 13–15**: FastAPI Recommendation Microservice with In-Memory Model Caching.
+- **Day 16–18**: Node.js/Express Hydration Layer & React Recommendation Carousel.
