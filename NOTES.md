@@ -73,10 +73,25 @@
   - *Mathematical Impact*: Artificially increases Term Frequency (TF) for high-intent attributes, multiplying their contribution in cosine similarity dot products without requiring multiple vector spaces.
   - Verified pipeline output on `ml/goodreads_sample.csv`.
 
+### Day 10: TF-IDF Vectorization, Cosine Similarity & Model Serialization
+- **TF-IDF Pipeline (`ml/recommender.py`)**:
+  - Implemented `TfidfVectorizer(stop_words='english')` across the weighted `content_soup`.
+  - Matrix dimensions: `(N_books, Vocabulary_size)` (e.g., $10 \times 131$).
+- **Optimized Similarity Computation (`linear_kernel`)**:
+  - *Engineering Decision*: Used `linear_kernel` instead of `cosine_similarity`.
+  - *Mathematical Defense*: `TfidfVectorizer` outputs L2-normalized vectors ($\|A\| = 1$). Cosine similarity simplifies to the pure dot product ($A \cdot B$), saving redundant norm calculations and reducing latency/memory overhead.
+- **Recommendation Retrieval Engine (`get_recommendations`)**:
+  - Reverse index mapping via `pd.Series(df.index, index=df['title'])` for $\mathcal{O}(1)$ title-to-index lookup.
+  - Slices `sim_scores[1:top_n+1]` to intentionally exclude index 0 (a book's trivial self-similarity of $1.0$).
+- **Model Artifact Persistence (`joblib`)**:
+  - Bundled `cosine_sim`, `indices`, and `books` metadata into a unified dictionary and serialized to `tfidf_model.joblib`.
+  - Enables sub-millisecond cold starts for the future FastAPI service without re-reading CSVs or recomputing matrix transformations.
+- **Scalability Trade-Off Drill**:
+  - Full matrix space complexity is $\mathcal{O}(N^2)$. Viable for catalogs up to ~50,000 items in memory; large-scale catalogs ($10^6$ items) require vector indexing (ANN / FAISS / HNSW).
+
 ---
 
 ## 🎯 3. Upcoming Milestones
-- **Day 10**: TF-IDF Vectorization & Cosine Similarity Matrix Computation (`ml/recommender.py`).
-- **Day 11**: Dense Semantic Embeddings (`all-MiniLM-L6-v2` / SentenceTransformers).
+- **Day 11**: Dense Semantic Embeddings (`all-MiniLM-L6-v2` / SentenceTransformers) vs Sparse TF-IDF comparison.
 - **Day 12**: Generalization Validation & Integration against PostgreSQL catalog.
 - **Day 13**: FastAPI Recommendation Microservice.
