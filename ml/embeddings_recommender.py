@@ -1,71 +1,139 @@
+import os
+import re
+import sys
 import joblib
 import pandas as pd
 import numpy as np
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 from data_prep import load_and_prep_data
 
+# Ensure UTF-8 output on Windows consoles
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
-def build_embeddings_recommender(df, model_name='all-MiniLM-L6-v2'):
-    """
-    Encodes the content_soup into 384-dimensional dense vectors
-    and computes the pairwise cosine similarity matrix.
-    """
-    print(f"Loading SentenceTransformer model: {model_name}...")
+def build_embeddings(df, model_name='all-MiniLM-L6-v2'):
+    print(f"Loading SentenceTransformer: {model_name}...")
     model = SentenceTransformer(model_name)
     
-    print("Encoding book descriptions into dense semantic vectors...")
-    # model.encode() converts list of texts into a 2D numpy array of shape (N_books, 384)
-    embeddings = model.encode(df['content_soup'].tolist(), show_progress_bar=True)
+    print("Encoding 9,806 book descriptions into dense semantic vectors...")
+    embeddings = model.encode(
+        df['content_soup'].tolist(), 
+        batch_size=64, 
+        show_progress_bar=True, 
+        normalize_embeddings=True
+    ).astype(np.float32)
     
-    print(f"Dense Embeddings matrix shape: {embeddings.shape} (books x dimensions)")
-    
-    print("Computing cosine similarity matrix...")
-    cosine_sim = cosine_similarity(embeddings, embeddings)
-    
-    return model, embeddings, cosine_sim
+    print(f"✅ Embeddings matrix shape: {embeddings.shape} (books x dimensions)")
+    return model, embeddings
 
-def get_recommendations(title, df, cosine_sim, top_n=3):
+def get_recommendations(target, df, embeddings, top_n=5, mode="discover"):
     """
-    Finds top_n most similar books using cosine similarity.
+    Finds top_n books using fast vectorized dot product (<1ms).
+    
+    Modes:
+      - 'more_like_this': Pure similarity (includes same author & series sequels).
+      - 'discover': Serendipity mode! Diversifies recommendations by filtering out
+                    the same author and series titles.
     """
-    indices = pd.Series(df.index, index=df['title']).drop_duplicates()
+    # 1. Resolve target to DataFrame row index
+    if isinstance(target, int):
+        matches = df[df['book_id'] == target].index
+        if len(matches) == 0:
+            print(f"❌ book_id {target} not found!")
+            return pd.DataFrame()
+        idx = matches[0]
+    else:
+        matches = df[df['title'].str.lower() == target.lower()].index
+        if len(matches) == 0:
+            matches = df[df['title'].str.contains(target, case=False, na=False)].index
+        if len(matches) == 0:
+            print(f"❌ Book '{target}' not found in dataset!")
+            return pd.DataFrame()
+        idx = matches[0]
+
+    target_title = df.loc[idx, 'title']
+    target_author = df.loc[idx, 'authors'].strip().lower()
+    # Extract base title before any '(' or '#' for series detection
+    base_title = re.split(r"[\(#]", target_title)[0].strip().lower()
+
+    print(f"\n🔍 Target: \"{target_title}\" by {df.loc[idx, 'authors']} [Mode: '{mode}']")
+
+    # 2. Vectorized dot product in <1ms
+    target_vec = embeddings[idx]
+    sim_scores = np.dot(embeddings, target_vec)
+    sorted_indices = np.argsort(sim_scores)[::-1]
+
+    selected_indices = []
     
-    if title not in indices:
-        print(f"Book '{title}' not found in dataset!")
-        return []
-    
-    idx = indices[title]
-    sim_scores = list(enumerate(cosine_sim[idx]))
-    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-    
-    # Exclude index 0 (the book itself)
-    sim_scores = sim_scores[1:top_n + 1]
-    book_indices = [i[0] for i in sim_scores]
-    
-    results = df[['title', 'authors', 'genres']].iloc[book_indices].copy()
-    results['similarity_score'] = [round(i[1], 4) for i in sim_scores]
+    for candidate_idx in sorted_indices:
+        # Never recommend the book to itself
+        if candidate_idx == idx:
+            continue
+
+        cand_author = df.loc[candidate_idx, 'authors'].strip().lower()
+        cand_title = df.loc[candidate_idx, 'title'].lower()
+
+        if mode == "discover":
+            # Filter out same author
+            if cand_author == target_author:
+                continue
+            # Filter out same series / franchise root title
+            if len(base_title) > 3 and base_title in cand_title:
+                continue
+
+        selected_indices.append(candidate_idx)
+        if len(selected_indices) == top_n:
+            break
+
+    results = df[['book_id', 'title', 'authors', 'genres']].iloc[selected_indices].copy()
+    results['similarity_score'] = [round(float(sim_scores[i]), 4) for i in selected_indices]
     return results
 
-def save_embeddings_artifacts(df, embeddings, cosine_sim, filepath="embeddings_model.joblib"):
+def save_embeddings_artifacts(df, embeddings, filepath="embeddings_model.joblib"):
     indices = pd.Series(df.index, index=df['title']).drop_duplicates()
     artifacts = {
         'embeddings': embeddings,
-        'cosine_sim': cosine_sim,
         'indices': indices,
         'books': df[['book_id', 'title', 'authors', 'genres']]
     }
-    joblib.dump(artifacts, filepath)
-    print(f"Embedding artifacts saved to {filepath}!")
+    print(f"Saving 15MB embedding artifact to {filepath}...")
+    joblib.dump(artifacts, filepath, compress=3)
+    print(f"✅ Embedding artifacts saved to {filepath}!")
 
+def load_embeddings_artifacts(filepath="embeddings_model.joblib"):
+    print(f"Loading embedding artifacts from {filepath}...")
+    artifacts = joblib.load(filepath)
+    print(f"✅ Loaded {len(artifacts['books'])} books and embeddings matrix {artifacts['embeddings'].shape}!")
+    return artifacts
 
 if __name__ == "__main__":
-    df = load_and_prep_data("goodreads_sample.csv")
-    model, embeddings, cosine_sim = build_embeddings_recommender(df)
+    artifact_path = "embeddings_model.joblib"
+
+    # Only train if artifact does not exist yet
+    if not os.path.exists(artifact_path):
+        print("Model artifact not found. Building from scratch...")
+        df = load_and_prep_data("goodreads_10k.csv")
+        model, embeddings = build_embeddings(df)
+        save_embeddings_artifacts(df, embeddings, artifact_path)
+    else:
+        print(f"⚡ Found existing {artifact_path}. Skipping encoding!")
+
+    artifacts = load_embeddings_artifacts(artifact_path)
     
-    save_embeddings_artifacts(df, embeddings, cosine_sim, "embeddings_model.joblib")
-    
-    test_book = "The Hunger Games"
-    print(f"\n--- Top 3 Neural Embedding Recommendations for '{test_book}' ---")
-    recommendations = get_recommendations(test_book, df, cosine_sim, top_n=3)
-    print(recommendations)
+    # Compare both modes on 'The Hunger Games'
+    test_target = "Hunger Games"
+
+    print("\n" + "="*50)
+    print("MODE 1: MORE LIKE THIS (Series & Author included)")
+    print("="*50)
+    recs_similar = get_recommendations(test_target, artifacts['books'], artifacts['embeddings'], top_n=5, mode="more_like_this")
+    print(recs_similar.to_string(index=False))
+
+    print("\n" + "="*50)
+    print("MODE 2: DISCOVER SOMETHING NEW (Diversified authors & themes)")
+    print("="*50)
+    recs_discover = get_recommendations(test_target, artifacts['books'], artifacts['embeddings'], top_n=5, mode="discover")
+    print(recs_discover.to_string(index=False))

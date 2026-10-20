@@ -2,6 +2,7 @@ const express = require("express");   // importing express packages
 const cors = require("cors");
 const sequelize = require("./db");
 const { Op } = require("sequelize")
+const axios = require("axios");
 
 const Book = require("./models/Book"); // importing Book model
 const Review = require("./models/Review"); // importing Review model
@@ -25,8 +26,8 @@ const PORT = 3000; // port on which our server will listen
 
 
 app.get("/api/books", async (req, res) => {  //  GET request to fetch books
-    
-    try{
+
+    try {
         const { genre, page = 1, limit = 20 } = req.query;
 
         const pageNumber = parseInt(page);
@@ -50,7 +51,7 @@ app.get("/api/books", async (req, res) => {  //  GET request to fetch books
         });
 
 
-    }  catch(error){
+    } catch (error) {
         res.status(500).json({
             message: "Failed to fetch books"
         });
@@ -58,11 +59,11 @@ app.get("/api/books", async (req, res) => {  //  GET request to fetch books
 });
 
 app.get("/api/books/:id", async (req, res) => {
-    
-    try{
+
+    try {
         const book = await Book.findByPk(req.params.id);
 
-        if(!book){
+        if (!book) {
             return res.status(404).json({
                 message: "Book not found"
             })
@@ -70,7 +71,7 @@ app.get("/api/books/:id", async (req, res) => {
 
         res.json(book);
 
-    } catch(error){
+    } catch (error) {
 
         res.status(500).json({
             message: "Failed to fetch the book"
@@ -115,6 +116,37 @@ app.get("/api/shelf", async (req, res) => {
 
     }
 });
+
+app.get("/api/books/:id/recommendations", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { mode = "discover", topN = 5 } = req.query;
+        // Call the Python FastAPI ML microservice on port 8000
+        const mlResponse = await axios.get("http://127.0.0.1:8000/recommend", {
+            params: {
+                book_id: id,
+                mode: mode,
+                top_n: topN
+            },
+            timeout: 3000 // 3-second circuit-breaker timeout
+        });
+        res.json(mlResponse.data);
+    } catch (error) {
+        console.error("ML Recommender Gateway Error:", error.message);
+        // Graceful degradation: if ML service is down, don't crash the client
+        if (error.code === "ECONNREFUSED") {
+            return res.status(503).json({
+                message: "Recommendation engine is temporarily offline",
+                recommendations: []
+            });
+        }
+        res.status(error.response?.status || 500).json({
+            message: error.response?.data?.detail || "Failed to fetch recommendations",
+            recommendations: []
+        });
+    }
+});
+
 
 //if theres no book with a certain id you put find returns undefined
 // listen() start listening for incoming HTTP requests on this port.

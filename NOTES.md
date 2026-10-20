@@ -104,13 +104,56 @@
 - **Placement Defense Takeaway**:
   - Sparse lexical matching provides exact keyword precision and $\mathcal{O}(1)$ CPU inference; dense embeddings provide thematic semantic recall. In production, this justifies modern **Hybrid Search** (combining sparse BM25/TF-IDF with dense vector search).
 
+### Day 12: Catalog Scale Analysis, Schema Modernization & The 10k Decision
+- **Schema Modernization (`server/models/Book.js`)**:
+  - Identified `VARCHAR(255)` truncation failure on long publisher thumbnail URLs and extended subtitles.
+  - Upgraded `title`, `author`, `genre`, and `coverImageUrl` to `DataTypes.TEXT` via `Book.sync({ alter: true })` across live Neon PostgreSQL database.
+- **Multi-Genre Taxonomy Engineering (`seedCatalog.js`)**:
+  - Implemented multi-genre parsing extracting nested `item.volumeInfo.categories` arrays alongside search tokens, generating rich comma-separated multi-label genre strings.
+  - Enforced secure `https://` protocol upgrades for all Google CDN book covers to prevent mixed-content browser warnings.
+- **Data Engineering Real-World Discovery (API Rate Limiting)**:
+  - Experienced Google Books API rate limiting (HTTP 503 `backendFailed`) during rapid querying across 40 authors.
+  - *Interview Takeaway*: Real-world proof of why relying solely on third-party rate-limited public APIs for large catalog ingestion is fragile compared to static authoritative datasets.
+- **Acquired 10k Production Dataset (`ml/goodreads_10k.csv`)**:
+  - Ingested MIT-licensed 10,000-book dataset with rich descriptions, multi-genre tags, and ratings from Hugging Face.
+- **Decision for Next Session**:
+  - Seed all 10,000 books from `goodreads_10k.csv` directly into PostgreSQL in under 10 seconds.
+  - Train our TF-IDF and SentenceTransformers models on the full 10,000-book catalog.
+  - Spin up the FastAPI recommendation microservice (`ml/main.py`).
+
+### Day 13: 10,000-Book Catalog Ingestion & End-to-End Polyglot Architecture
+- **Catalog Ingestion (`seedGoodreads10k.js`)**:
+  - Replaced Google Books rate-limited scraping with Node.js streaming parser (`csv-parser`).
+  - Scanned 10,000 rows from `goodreads_10k.csv`: filtered 90 missing descriptions and 104 duplicate editions.
+  - Bulk-inserted **9,806 pristine books** into Neon PostgreSQL in ~92 seconds using `Book.bulkCreate` in batches of 1,000.
+  - Validated 100% 1-to-1 alignment between Postgres auto-increment IDs (`1..9806`) and Python DataFrame indices.
+- **Full Catalog Machine Learning Pipeline**:
+  - Updated `ml/data_prep.py` with multi-genre string cleaning and weighted content soup: $(\text{Author} \times 3) + (\text{Genres} \times 2) + (\text{Description} \times 1)$.
+  - Trained lexical baseline in `ml/recommender.py` (71,931 vocabulary features) serialized to compressed `tfidf_model.joblib`.
+  - Scaled dense semantic embeddings in `ml/embeddings_recommender.py` (`all-MiniLM-L6-v2`, 384 dimensions).
+  - **$O(N \times D)$ System Design Optimization**: Instead of storing an $O(N^2)$ precomputed similarity matrix (400 MB), stored the $(9806 \times 384)$ normalized embedding matrix (15 MB). Used L2-normalization (`normalize_embeddings=True`) so cosine similarity evaluates via pure vectorized dot product in $<1\text{ms}$.
+  - Added conditional caching (`if not os.path.exists`) to load models in 0.2s without redundant re-encoding.
+- **Dual-Mode Serendipity Re-ranking Algorithm**:
+  - *Mode 1: "More Like This" (Exploitation)* — surfaces direct series sequels and author's other works.
+  - *Mode 2: "Discover Something New" (Exploration / Serendipity)* — filters out the same author and series root title, surfacing fresh authors who explore identical underlying themes.
+- **FastAPI Microservice (`ml/main.py`)**:
+  - Runs on port 8000 with `@asynccontextmanager` lifespan loading ML artifacts into memory on boot.
+  - Exposes `GET /health` and `GET /recommend?book_id=...&mode=...&top_n=...` with sub-5ms latency.
+- **Node/Express API Gateway (`server/index.js`)**:
+  - Implemented `GET /api/books/:id/recommendations` acting as API gateway to FastAPI with a 3-second circuit breaker and graceful offline fallback (`ECONNREFUSED`).
+- **React Client Integration (`client/src/BookDetail.js`)**:
+  - Dynamic recommendation grid displaying book cards, match percentage badges (e.g. "84% Match"), author, and genres.
+  - Interactive Mode Toggle buttons (*✨ Discover Something New* vs *📚 More Like This*).
+  - Instant navigation between books with dynamic CSS editorial spine cover fallbacks.
+
 ---
 
 ## 🎯 3. Upcoming Milestones & System Architecture
 
-### Phase A: Recommender Productionization (Days 12–13)
-- **Day 12**: Generalization Validation & Integration against the 440-book PostgreSQL Catalog (Hybrid scaling).
-- **Day 13**: FastAPI Recommendation Microservice serving serialized transformer and TF-IDF models with in-memory caching.
+### Phase A: 10k Ingestion & Microservices (Completed ✅)
+- 9,806-book catalog seeded into PostgreSQL.
+- TF-IDF and Sentence Transformer models trained and deployed via FastAPI.
+- Full End-to-End Tracer Bullet verified from React UI to Express to Python and back.
 
 ### Phase B: Authentication & User Isolation (Days 14–15)
 - **Google OAuth 2.0 Sign-In**: Direct Google Login integration issuing JWT sessions.

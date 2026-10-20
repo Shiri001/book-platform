@@ -9,11 +9,11 @@ const Book = sequelize.define("Book", {
         type: DataTypes.STRING,
         unique: true
     },
-    title: DataTypes.STRING,
-    author: DataTypes.STRING,
-    genre: DataTypes.STRING,
+    title: DataTypes.TEXT,
+    author: DataTypes.TEXT,
+    genre: DataTypes.TEXT,
     description: DataTypes.TEXT,
-    coverImageUrl: DataTypes.STRING,
+    coverImageUrl: DataTypes.TEXT,
     averageRating: DataTypes.FLOAT
 });
 
