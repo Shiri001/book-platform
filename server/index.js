@@ -35,12 +35,17 @@ app.get("/api/books", async (req, res) => {  //  GET request to fetch books
 
         const offset = (pageNumber - 1) * limitNumber;
 
-        const where = genre ? { genre: { [Op.iLike]: genre } } : {};
+        const where = genre ? { genre: { [Op.iLike]: `%${genre}%` } } : {};
 
         const { count, rows } = await Book.findAndCountAll({
             where,
             limit: limitNumber,
-            offset: offset
+            offset: offset,
+            // Prioritize books with real covers first, then order by id
+            order: [
+                [sequelize.literal('"coverImageUrl" IS NOT NULL'), 'DESC'],
+                ['id', 'ASC']
+            ]
         });
 
         res.json({
@@ -130,7 +135,26 @@ app.get("/api/books/:id/recommendations", async (req, res) => {
             },
             timeout: 3000 // 3-second circuit-breaker timeout
         });
-        res.json(mlResponse.data);
+
+        // Hydrate recommendations with real coverImageUrl from PostgreSQL database!
+        const recs = mlResponse.data.recommendations || [];
+        const bookIds = recs.map(r => r.bookId);
+
+        const dbBooks = await Book.findAll({
+            where: { id: bookIds },
+            attributes: ["id", "coverImageUrl"]
+        });
+        const coverMap = new Map(dbBooks.map(b => [b.id, b.coverImageUrl]));
+
+        const enrichedRecs = recs.map(r => ({
+            ...r,
+            coverImageUrl: coverMap.get(r.bookId) || null
+        }));
+
+        res.json({
+            ...mlResponse.data,
+            recommendations: enrichedRecs
+        });
     } catch (error) {
         console.error("ML Recommender Gateway Error:", error.message);
         // Graceful degradation: if ML service is down, don't crash the client

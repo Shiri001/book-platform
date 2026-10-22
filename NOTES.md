@@ -146,20 +146,58 @@
   - Interactive Mode Toggle buttons (*✨ Discover Something New* vs *📚 More Like This*).
   - Instant navigation between books with dynamic CSS editorial spine cover fallbacks.
 
+### Day 14: Cover Enrichment Pipeline, Custom Book Cover Component & Priority Sorting
+- **Book Cover Image Enrichment Pipeline (`server/scripts/enrichCovers.js`)**:
+  - *Data issue*: The raw Goodreads 10k dataset had null or dead cover URLs for most entries, resulting in empty card placeholders.
+  - *Pipeline implementation*: Mapped book IDs to official Goodreads image CDN URLs (`https://images.gr-assets.com/books/...`) and Open Library covers.
+  - Processed and updated **3,208 books** in Neon PostgreSQL with verified direct cover image URLs.
+  - Created URL sanitation script (`server/scripts/fixCoverUrls.js`) to guarantee valid domains and clean CDN paths.
+- **Physical Book Cover Component (`client/src/BookCover.js`)**:
+  - Created a reusable cover component styled like a real physical book.
+  - Added left-spine crease inset shadow (`box-shadow: inset 7px 0 12px rgba(0, 0, 0, 0.7)`) to mimic the spine groove of a physical book.
+  - Set `referrerPolicy="no-referrer"` to resolve HTTP 403 Forbidden hotlink blocks from the Goodreads CDN.
+  - Built deterministic velvet gradient fallbacks based on genre tags (Navy for Fiction, Crimson for Horror/Thriller, Emerald for Classics, Amber for History) with title/author typography when cover images are null or fail to load (`onError`).
+- **Catalog Multi-Genre Wildcard Search & Priority Ordering (`server/index.js`)**:
+  - *Bug diagnosed*: When filtering by a genre like "Fantasy", only 40 books were returned, almost all lacking covers.
+  - *Root cause*: In PostgreSQL, the `genre` column stores multi-genre strings (e.g. `"Classics, Fiction, Fantasy, Young Adult"`). The Sequelize query was using exact matching (`where: { genre }`), which missed any book with compound genre tags. Additionally, default SQL order returned lowest IDs first regardless of whether they had cover art.
+  - *Fix implemented*:
+    - Switched to case-insensitive wildcard substring search: `{ [Op.iLike]: `%${genre}%` }`.
+    - Added cover-first priority sorting:
+      ```javascript
+      order: [
+        [sequelize.literal('"coverImageUrl" IS NOT NULL'), 'DESC'],
+        ['id', 'ASC']
+      ]
+      ```
+    - *Result*: Genre search for "Fantasy" now returns 2,226 books, with high-quality cover art displayed on page 1.
+- **Recommendation Cover Hydration (`server/index.js` & `client/src/BookDetail.js`)**:
+  - *Bug diagnosed*: Recommendations on book detail pages were missing cover images, displaying fallback gradients even when the recommended books had cover images in PostgreSQL.
+  - *Root cause*: Two issues:
+    1. To keep memory small (15 MB), the Python FastAPI service returns only candidate IDs and similarity scores, not image URLs.
+    2. The Express gateway passed the raw FastAPI payload directly to the frontend without database hydration, and `BookDetail.js` was passing `coverImageUrl={null}` to `BookCover`.
+  - *Fix implemented*:
+    - In Express `GET /api/books/:id/recommendations`, gathered all candidate `bookId`s, queried PostgreSQL via `Book.findAll({ where: { id: bookIds }, attributes: ["id", "coverImageUrl"] })`, and merged `coverImageUrl` onto each candidate object.
+    - Updated `BookDetail.js` to pass `coverImageUrl={rec.coverImageUrl}` into `BookCover`.
+- **Developer Workflow Improvement (`server/package.json`)**:
+  - Added `"dev": "nodemon index.js"` script to `server/package.json` so backend changes immediately reload without leaving stale processes running on port 3000.
+
 ---
 
 ## 🎯 3. Upcoming Milestones & System Architecture
 
-### Phase A: 10k Ingestion & Microservices (Completed ✅)
+### Phase A: Ingestion, Microservices & Polish (Completed ✅)
 - 9,806-book catalog seeded into PostgreSQL.
-- TF-IDF and Sentence Transformer models trained and deployed via FastAPI.
-- Full End-to-End Tracer Bullet verified from React UI to Express to Python and back.
+- TF-IDF and Sentence Transformer models trained and deployed via FastAPI (sub-5ms vector similarity).
+- 3,200+ books enriched with high-resolution cover images.
+- Multi-genre ILIKE search and cover-first priority sorting.
+- Recommendation cover hydration across Express gateway and React detail pages.
+- Express circuit breaker (3-second timeout with graceful fallback on ML offline).
 
-### Phase B: Authentication & User Isolation (Days 14–15)
+### Phase B: Authentication & User Isolation (Days 15–16)
 - **Google OAuth 2.0 Sign-In**: Direct Google Login integration issuing JWT sessions.
 - **Relational User Modeling**: Connect shelves and reading history specifically to authenticated `userId`s in PostgreSQL (replacing anonymous test shelf).
 
-### Phase C: Generative AI RAG Chatbot (Days 16–17)
+### Phase C: Generative AI RAG Chatbot (Days 17–18)
 - **RAG Architecture**:
   - *Retriever*: Our `all-MiniLM-L6-v2` dense embeddings pipeline retrieving top $K$ relevant book dossiers.
   - *Generator*: Google Gemini LLM API grounded on retrieved catalog context.
@@ -167,10 +205,8 @@
   1. *Catalog Concierge*: Natural-language discovery queries across the whole catalog.
   2. *Literary Companion*: Grounded Q&A on specific book pages (themes, plot analysis, character motivations).
 
-### Phase D: Frontend Experience & UI Assembly (Days 18–21)
-- **Collaborative Flow**: User drives UX/visual direction; AI implements React components; User masters the core state/data flow basics.
-- **Key Features**:
-  - Clean discovery feed & recommendation carousels.
-  - Persistent auth state with Google Avatar/Profile.
-  - Interactive AI Chat drawer.
-  - Personal Shelf manager with reading status tabs (*Want to Read*, *Reading*, *Finished*).
+### Phase D: Production Deployment (Days 19–20)
+- Frontend deployed to Vercel.
+- Express API Gateway deployed to Render / Railway.
+- FastAPI ML service deployed to Render / Railway.
+- PostgreSQL database hosted on Neon.
