@@ -1,11 +1,13 @@
 import { useParams, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { useAuth } from './AuthContext';
 import BookCover from "./BookCover";
 
 function BookDetail() {
     const { id } = useParams();
     const [book, setBook] = useState(null);
     const [added, setAdded] = useState(false);
+    const { isAuthenticated, token, openAuthModal } = useAuth();
 
     // ML Recommendation States
     const [recommendations, setRecommendations] = useState([]);
@@ -43,9 +45,16 @@ function BookDetail() {
     }, [id, recMode]);
 
     function addToShelf(bookId, status) {
+        if (!isAuthenticated) {
+            openAuthModal("signin");
+            return;
+        }
         fetch("http://localhost:3000/api/shelf", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}` // Passes the user's session token!
+            },
             body: JSON.stringify({ bookId, status })
         })
             .then(res => res.json())
@@ -79,8 +88,8 @@ function BookDetail() {
                 marginBottom: "32px",
                 transition: "color 0.2s"
             }}
-            onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
-            onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
+                onMouseEnter={e => e.currentTarget.style.color = "var(--text-primary)"}
+                onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
             >
                 ← RETURN TO CATALOG
             </Link>

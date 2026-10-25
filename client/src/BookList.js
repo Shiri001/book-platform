@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from './AuthContext';
+import { GoogleLogin } from '@react-oauth/google';
 import BookCover from './BookCover';
 
 const GENRES = ["All", "Classics", "Fiction", "Historical Fiction", "Dystopia", "Fantasy", "Romance", "Science Fiction"];
@@ -12,6 +14,8 @@ function BookList() {
   const [loading, setLoading] = useState(true);
 
   const LIMIT = 18; // 18 books per page fits a clean 3x6 or 2x9 grid
+  const { isAuthenticated, user, openAuthModal, loginWithGoogle } = useAuth();
+
 
   useEffect(() => {
     setLoading(true);
@@ -35,66 +39,262 @@ function BookList() {
   return (
     <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "40px 24px" }}>
 
-      {/* 1. Dramatic Hero Section */}
-      <section style={{ textAlign: "center", marginBottom: "48px", paddingTop: "20px" }}>
-        <p style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "12px",
-          letterSpacing: "3px",
-          color: "var(--text-muted)",
-          textTransform: "uppercase",
-          marginBottom: "12px"
-        }}>
-          Semantic Literary Intelligence
-        </p>
+      {/* 1. Goodreads-Inspired Editorial Split Hero */}
+      <section style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+        gap: "48px",
+        alignItems: "center",
+        marginBottom: "64px",
+        padding: "40px 0 20px 0"
+      }}>
+        {/* Left Column: Literary Invitation & Call to Action */}
+        <div>
+          <p style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "11px",
+            letterSpacing: "3px",
+            color: "var(--accent-gold)",
+            textTransform: "uppercase",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px"
+          }}>
+            <span style={{ display: "inline-block", width: "18px", height: "1px", backgroundColor: "var(--accent-gold)" }} />
+            Literary Discovery & Reading Shelves
+          </p>
 
-        <h1 style={{
-          fontFamily: "var(--font-serif)",
-          fontSize: "clamp(36px, 5vw, 64px)",
-          fontWeight: 400,
-          letterSpacing: "-0.5px",
-          lineHeight: 1.1,
-          color: "var(--text-primary)",
-          marginBottom: "16px"
-        }}>
-          Stories Bound by Semantic Gravity.
-        </h1>
+          <h1 style={{
+            fontFamily: "var(--font-serif)",
+            fontSize: "clamp(34px, 4.2vw, 56px)",
+            fontWeight: 400,
+            letterSpacing: "-0.5px",
+            lineHeight: 1.15,
+            color: "var(--text-primary)",
+            marginBottom: "20px"
+          }}>
+            Books chosen for how they resonate, not just what they're called.
+          </h1>
 
-        <p style={{
-          fontSize: "16px",
-          color: "var(--text-secondary)",
-          maxWidth: "600px",
-          margin: "0 auto 32px auto",
-          lineHeight: 1.6
-        }}>
-          Explore 9,806 volumes mapped across a 384-dimensional vector space. Discover literature not by keyword, but by conceptual valence.
-        </p>
+          <p style={{
+            fontSize: "16px",
+            color: "var(--text-secondary)",
+            lineHeight: 1.7,
+            marginBottom: "32px",
+            maxWidth: "520px"
+          }}>
+            Tell us what moved you, and our semantic engine finds works that share the same soul, themes, and emotional depth across 9,800+ volumes.
+          </p>
 
-        {/* Live System Metrics Bar */}
-        <div style={{
-          display: "inline-flex",
-          gap: "32px",
-          padding: "12px 24px",
-          background: "var(--bg-card)",
-          border: "1px solid var(--border-hairline)",
-          borderRadius: "8px",
-          fontFamily: "var(--font-mono)",
-          fontSize: "12px"
-        }}>
-          <div>
-            <span style={{ color: "var(--text-muted)" }}>CATALOG: </span>
-            <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{total.toLocaleString()} Books</span>
+          {/* Action Buttons */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "14px", alignItems: "center" }}>
+            <button
+              onClick={() => {
+                const el = document.getElementById("catalog-grid");
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+              }}
+              style={{
+                padding: "12px 26px",
+                background: "var(--text-primary)",
+                color: "var(--bg-primary)",
+                border: "none",
+                borderRadius: "30px",
+                fontFamily: "var(--font-sans)",
+                fontWeight: 600,
+                fontSize: "14px",
+                cursor: "pointer",
+                transition: "opacity 0.2s"
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = "0.9"}
+              onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+            >
+              Browse Catalog ↓
+            </button>
+
+            {!isAuthenticated && (
+              <button
+                onClick={() => openAuthModal("signup")}
+                style={{
+                  padding: "12px 24px",
+                  background: "transparent",
+                  color: "var(--text-primary)",
+                  border: "1px solid var(--border-hairline)",
+                  borderRadius: "30px",
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: 500,
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = "var(--border-focus)"}
+                onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border-hairline)"}
+              >
+                Create Account →
+              </button>
+            )}
           </div>
-          <div>
-            <span style={{ color: "var(--text-muted)" }}>LATENCY: </span>
-            <span style={{ color: "var(--accent-green)", fontWeight: 600 }}>&lt;1ms Vector Search</span>
-          </div>
-          <div>
-            <span style={{ color: "var(--text-muted)" }}>MODEL: </span>
-            <span style={{ color: "var(--accent-cyan)", fontWeight: 600 }}>all-MiniLM-L6-v2</span>
+        </div>
+
+        {/* Right Column: Goodreads-Style Onboarding Card */}
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <div style={{
+            width: "100%",
+            maxWidth: "380px",
+            background: "linear-gradient(180deg, #121218 0%, #0d0d12 100%)",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            borderRadius: "18px",
+            padding: "32px 28px",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.6)"
+          }}>
+            {isAuthenticated ? (
+              /* If User is already signed in: Welcome Back Card */
+              <div style={{ textAlign: "center" }}>
+                <div style={{ marginBottom: "16px" }}>
+                  {user.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt={user.name}
+                      referrerPolicy="no-referrer"
+                      style={{ width: "56px", height: "56px", borderRadius: "50%", border: "2px solid var(--border-focus)" }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: "56px",
+                      height: "56px",
+                      borderRadius: "50%",
+                      background: "var(--accent-gold)",
+                      color: "#000",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "20px",
+                      fontWeight: 700
+                    }}>
+                      {user.name?.[0]}
+                    </div>
+                  )}
+                </div>
+                <h3 style={{ fontFamily: "var(--font-serif)", fontSize: "20px", color: "var(--text-primary)", marginBottom: "6px" }}>
+                  Welcome back, {user.name?.split(" ")[0]}
+                </h3>
+                <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "24px" }}>
+                  Your personal library is waiting. Track what you've read and get recommendations.
+                </p>
+                <Link
+                  to="/shelf"
+                  style={{
+                    display: "block",
+                    padding: "12px",
+                    background: "var(--text-primary)",
+                    color: "var(--bg-primary)",
+                    borderRadius: "8px",
+                    fontWeight: 600,
+                    fontSize: "14px",
+                    textDecoration: "none"
+                  }}
+                >
+                  View My Reading Shelf →
+                </Link>
+              </div>
+            ) : (
+              /* If Guest: Goodreads Onboarding Card with Google + Email */
+              <div>
+                <h3 style={{
+                  fontFamily: "var(--font-serif)",
+                  fontSize: "22px",
+                  fontWeight: 400,
+                  color: "var(--text-primary)",
+                  marginBottom: "8px"
+                }}>
+                  Discover & read more
+                </h3>
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: "24px" }}>
+                  Save books to your reading shelf, explore 9,800+ titles, and discover semantic neighbors.
+                </p>
+
+                {/* 1. Continue with Google */}
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: "16px" }}>
+                  <GoogleLogin
+                    onSuccess={loginWithGoogle}
+                    onError={() => console.error("Google Login Failed")}
+                    theme="filled_black"
+                    shape="pill"
+                    size="large"
+                    text="continue_with"
+                  />
+                </div>
+
+                {/* Divider */}
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  margin: "18px 0",
+                  color: "var(--text-muted)",
+                  fontSize: "11px",
+                  fontFamily: "var(--font-mono)"
+                }}>
+                  <div style={{ flex: 1, height: "1px", backgroundColor: "var(--border-hairline)" }} />
+                  <span>OR</span>
+                  <div style={{ flex: 1, height: "1px", backgroundColor: "var(--border-hairline)" }} />
+                </div>
+
+                {/* 2. Sign Up with Email Button */}
+                <button
+                  onClick={() => openAuthModal("signup")}
+                  style={{
+                    width: "100%",
+                    padding: "11px",
+                    background: "rgba(255, 255, 255, 0.06)",
+                    border: "1px solid var(--border-hairline)",
+                    color: "var(--text-primary)",
+                    borderRadius: "30px",
+                    fontFamily: "var(--font-sans)",
+                    fontWeight: 500,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px"
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.1)";
+                    e.currentTarget.style.borderColor = "var(--border-focus)";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.06)";
+                    e.currentTarget.style.borderColor = "var(--border-hairline)";
+                  }}
+                >
+                  ✉ Sign up with email
+                </button>
+
+                {/* 3. Already a member? Sign In */}
+                <p style={{ marginTop: "20px", textAlign: "center", fontSize: "12px", color: "var(--text-muted)" }}>
+                  Already a member?{" "}
+                  <button
+                    onClick={() => openAuthModal("signin")}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "var(--accent-cyan)",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      padding: 0
+                    }}
+                  >
+                    Sign In
+                  </button>
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>
+
 
       {/* 2. Genre Filter Pills */}
       <div style={{
@@ -131,12 +331,7 @@ function BookList() {
           Loading catalog volumes...
         </div>
       ) : (
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: "24px",
-          marginBottom: "48px"
-        }}>
+        <div id="catalog-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "24px" }}>
           {books.map(book => (
             <Link
               key={book.id}

@@ -3,6 +3,8 @@ const cors = require("cors");
 const sequelize = require("./db");
 const { Op } = require("sequelize")
 const axios = require("axios");
+const bcrypt = require("bcryptjs");
+
 
 const { OAuth2Client } = require("google-auth-library");
 const jwt = require("jsonwebtoken");
@@ -265,6 +267,109 @@ app.post("/api/auth/google", async (req, res) => {
         res.status(401).json({ message: "Google authentication failed" });
     }
 });
+
+// POST /api/auth/register — Email & Password Signup
+app.post("/api/auth/register", async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
+
+        // 1. Validation
+        if (!name || !email || !password) {
+            return res.status(400).json({ message: "Name, email, and password are required" });
+        }
+        if (password.length < 6) {
+            return res.status(400).json({ message: "Password must be at least 6 characters" });
+        }
+
+        // 2. Check if email already registered
+        const existingUser = await User.findOne({ where: { email } });
+        if (existingUser) {
+            return res.status(400).json({ message: "An account with this email already exists" });
+        }
+
+        // 3. Salt and Hash the password with bcrypt
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+
+        // 4. Create the new user in PostgreSQL
+        const user = await User.create({
+            name,
+            email,
+            passwordHash
+        });
+
+        // 5. Issue PageValence App JWT (7-day validity)
+        const token = jwt.sign(
+            { id: user.id, email: user.email, name: user.name },
+            JWT_SECRET,
+            { expiresIn: "7d" }
+        );
+
+        res.status(201).json({
+            token,
+            user: { id: user.id, name: user.name, email: user.email, role: user.role }
+        });
+    } catch (error) {
+        console.error("Registration error:", error);
+        res.status(500).json({ message: "Registration failed on server" });
+    }
+});
+
+
+// POST /api/auth/login — Email & Password Sign In
+app.post("/api/auth/login", async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ message: "Email and password are required" });
+        }
+
+        // 1. Look up user by email
+        const user = await User.findOne({ where: { email } });
+        if (!user) {
+            return res.status(401).json({ message: "Invalid email or password" });
+        }
+
+        // 2. If user registered via Google only, they don't have a password
+        if (!user.passwordHash) {
+            return res.status(400).json({
+                message: "This account was created with Google. Please use Google Sign In."
+            });
+        }
+
+        // 3. Compare supplied password against hashed password in database
+        const isMatch = await bcrypt.compare(password, user.passwordHash);
+        if (!isMatch) {
+            return res.status(401).json({ message: "Invalid email or password" });
+        }
+
+        // 4. Issue App JWT
+        const token = jwt.sign(
+            { id: user.id, email: user.email, name: user.name },
+            JWT_SECRET,
+            { expiresIn: "7d" }
+        );
+
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                avatarUrl: user.avatarUrl,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        console.error("Login error:", error);
+        res.status(500).json({ message: "Login failed on server" });
+    }
+});
+
+
+
+
 
 
 //if theres no book with a certain id you put find returns undefined

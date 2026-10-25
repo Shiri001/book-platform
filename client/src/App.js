@@ -2,13 +2,13 @@ import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-do
 import BookList from './BookList';
 import BookDetail from './BookDetail';
 import Shelf from './Shelf';
-import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from './AuthContext';
+import AuthModal from './AuthModal';
 
 
 function Navigation() {
   const location = useLocation();
-  const { user, login, logout, isAuthenticated } = useAuth(); // Access global auth state!
+  const { user, logout, isAuthenticated, openAuthModal } = useAuth();
 
   return (
     <header style={{
@@ -169,15 +169,28 @@ function Navigation() {
               </button>
             </div>
           ) : (
-            /* Logged Out State: Native Google Sign-In Pill */
-            <GoogleLogin
-              onSuccess={login}
-              onError={() => console.error("Google Sign-In Failed")}
-              theme="filled_black"
-              shape="pill"
-              size="medium"
-              text="signin"
-            />
+            /* Logged Out State: Opens AuthModal with Google + Email options! */
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <button
+                onClick={() => openAuthModal("signin")}
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--border-hairline)",
+                  color: "var(--text-primary)",
+                  padding: "7px 16px",
+                  borderRadius: "20px",
+                  fontSize: "13px",
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = "var(--border-focus)"}
+                onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border-hairline)"}
+              >
+                Sign In
+              </button>
+            </div>
           )}
         </div>
       </nav>
@@ -191,6 +204,7 @@ function App() {
     <BrowserRouter>
       <div style={{ minHeight: "100vh", position: "relative" }}>
         <Navigation />
+        <AuthModal /> {/* <-- Global Auth Modal */}
         <main>
           <Routes>
             <Route path="/" element={<BookList />} />
@@ -202,5 +216,6 @@ function App() {
     </BrowserRouter>
   );
 }
+
 
 export default App;
