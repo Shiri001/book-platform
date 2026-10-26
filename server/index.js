@@ -124,6 +124,91 @@ app.get("/api/books/:id", async (req, res) => {
 
 });
 
+// In-memory cache for author biographies (prevents repeated Wikipedia calls)
+const authorCache = new Map();
+
+// GET /api/authors/:name — Fetch Author Biography, Portrait & Their Catalog Books
+app.get("/api/authors/:name", async (req, res) => {
+    try {
+        const rawName = req.params.name;
+        // Clean author name (handles multiple authors like "Harper Lee, Sally Smith" -> takes primary author)
+        const cleanName = rawName.split(",")[0].replace(/\(.*?\)/g, "").trim();
+
+        if (!cleanName) {
+            return res.status(400).json({ message: "Author name is required" });
+        }
+
+        // 1. Fetch all books by this author from our PostgreSQL database
+        const authorBooks = await Book.findAll({
+            where: {
+                author: { [Op.iLike]: `%${cleanName}%` }
+            },
+            order: [
+                [sequelize.literal('"coverImageUrl" IS NOT NULL'), 'DESC'],
+                ['averageRating', 'DESC']
+            ],
+            limit: 20
+        });
+
+        // 2. Check if we already have this author's Wikipedia bio in memory cache
+        if (authorCache.has(cleanName.toLowerCase())) {
+            const cachedBio = authorCache.get(cleanName.toLowerCase());
+            return res.json({
+                ...cachedBio,
+                books: authorBooks
+            });
+        }
+
+        // 3. Fetch Author Biography & Portrait from Wikipedia REST API
+        let authorBio = {
+            name: cleanName,
+            tagline: "Author",
+            biography: "No biographical summary available for this author in public records yet.",
+            photo: null,
+            wikipediaUrl: null
+        };
+
+        try {
+            const wikiFormatted = cleanName.replace(/\s+/g, "_");
+            const wikiRes = await axios.get(
+                `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiFormatted)}`,
+                {
+                    headers: { "User-Agent": "PageValence/1.0 (contact@pagevalence.dev)" },
+                    timeout: 4000
+                }
+            );
+
+            if (wikiRes.data && wikiRes.data.extract) {
+                authorBio = {
+                    name: wikiRes.data.title || cleanName,
+                    tagline: wikiRes.data.description || "Author",
+                    biography: wikiRes.data.extract,
+                    photo: wikiRes.data.thumbnail?.source || null,
+                    wikipediaUrl: wikiRes.data.content_urls?.desktop?.page || null
+                };
+            }
+        } catch (wikiErr) {
+            // If Wikipedia doesn't have an exact page match, we gracefully fall back
+            console.log(`Wikipedia bio not found for "${cleanName}", proceeding with catalog entries.`);
+        }
+
+        // Cache the author biography for instant subsequent queries
+        authorCache.set(cleanName.toLowerCase(), authorBio);
+
+        // Return combined author profile + catalog books
+        res.json({
+            ...authorBio,
+            totalBooksInCatalog: authorBooks.length,
+            books: authorBooks
+        });
+
+    } catch (error) {
+        console.error("Failed to fetch author details:", error);
+        res.status(500).json({ message: "Failed to fetch author details" });
+    }
+});
+
+
 // Add requireAuth as the 2nd argument
 app.post("/api/shelf", requireAuth, async (req, res) => {
     try {
@@ -157,6 +242,130 @@ app.get("/api/shelf", requireAuth, async (req, res) => {
         res.status(500).json({ message: "Failed to fetch shelf" });
     }
 });
+
+// PUT /api/shelf/:id — Update Reading Progress & Status
+app.put("/api/shelf/:id", requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, currentPage, totalPages, pagesPerDay, dailyGoal, notes } = req.body;
+        const entry = await Shelf.findOne({
+            where: { id, userId: req.user.id },
+            include: Book
+        });
+        if (!entry) {
+            return res.status(404).json({ message: "Shelf entry not found" });
+        }
+        let updatedStatus = status || entry.status;
+        let newCurrent = currentPage !== undefined ? parseInt(currentPage) : entry.currentPage;
+        let newTotal = totalPages !== undefined ? parseInt(totalPages) : entry.totalPages;
+        let newPace = pagesPerDay !== undefined ? parseInt(pagesPerDay) : entry.pagesPerDay;
+        let newGoal = dailyGoal !== undefined ? parseInt(dailyGoal) : (entry.dailyGoal || 25);
+        // Daily Streak Calculation:
+        const todayStr = new Date().toISOString().split("T")[0];
+        let todayPages = entry.todayPages || 0;
+        let lastReadDate = entry.lastReadDate;
+        if (currentPage !== undefined && newCurrent > entry.currentPage) {
+            const pagesDelta = newCurrent - entry.currentPage;
+            if (lastReadDate === todayStr) {
+                todayPages += pagesDelta;
+            } else {
+                todayPages = pagesDelta; // Reset for new day
+                lastReadDate = todayStr;
+            }
+        }
+        if (newCurrent >= newTotal && newTotal > 0) {
+            updatedStatus = "finished";
+            newCurrent = newTotal;
+        }
+        if (status === "finished") {
+            newCurrent = newTotal;
+        }
+        const progress = newTotal > 0 ? Math.min(100, Math.round((newCurrent / newTotal) * 100)) : 0;
+        await entry.update({
+            status: updatedStatus,
+            currentPage: newCurrent,
+            totalPages: newTotal,
+            pagesPerDay: newPace,
+            dailyGoal: newGoal,
+            todayPages,
+            lastReadDate,
+            notes: notes !== undefined ? notes : entry.notes,
+            progress
+        });
+        res.json(entry);
+    } catch (error) {
+        console.error("Failed to update shelf entry:", error);
+        res.status(500).json({ message: "Failed to update shelf entry" });
+    }
+});
+// POST /api/shelf/:id/notes — Add a Reflection or Memorable Quote
+app.post("/api/shelf/:id/notes", requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { type = "note", content, page } = req.body;
+        if (!content || !content.trim()) {
+            return res.status(400).json({ message: "Content is required" });
+        }
+        const entry = await Shelf.findOne({
+            where: { id, userId: req.user.id }
+        });
+        if (!entry) {
+            return res.status(404).json({ message: "Shelf entry not found" });
+        }
+        const currentNotes = Array.isArray(entry.notes) ? entry.notes : [];
+        const newNote = {
+            id: Date.now().toString(),
+            type, // "note" | "quote" | "insight"
+            content: content.trim(),
+            page: page ? parseInt(page) : null,
+            createdAt: new Date().toISOString()
+        };
+        const updatedNotes = [newNote, ...currentNotes];
+        await entry.update({ notes: updatedNotes });
+        res.status(201).json(updatedNotes);
+    } catch (error) {
+        console.error("Failed to add note:", error);
+        res.status(500).json({ message: "Failed to add note" });
+    }
+});
+// DELETE /api/shelf/:id/notes/:noteId — Remove a Note
+app.delete("/api/shelf/:id/notes/:noteId", requireAuth, async (req, res) => {
+    try {
+        const { id, noteId } = req.params;
+        const entry = await Shelf.findOne({
+            where: { id, userId: req.user.id }
+        });
+        if (!entry) {
+            return res.status(404).json({ message: "Shelf entry not found" });
+        }
+        const currentNotes = Array.isArray(entry.notes) ? entry.notes : [];
+        const updatedNotes = currentNotes.filter(n => n.id !== noteId);
+        await entry.update({ notes: updatedNotes });
+        res.json(updatedNotes);
+    } catch (error) {
+        console.error("Failed to remove note:", error);
+        res.status(500).json({ message: "Failed to remove note" });
+    }
+});
+
+
+// DELETE /api/shelf/:id — Remove Book from Shelf
+app.delete("/api/shelf/:id", requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletedCount = await Shelf.destroy({
+            where: { id, userId: req.user.id }
+        });
+        if (deletedCount === 0) {
+            return res.status(404).json({ message: "Shelf entry not found" });
+        }
+        res.json({ message: "Book removed from shelf successfully", id: parseInt(id) });
+    } catch (error) {
+        console.error("Failed to remove book from shelf:", error);
+        res.status(500).json({ message: "Failed to remove book from shelf" });
+    }
+});
+
 
 
 app.get("/api/books/:id/recommendations", async (req, res) => {

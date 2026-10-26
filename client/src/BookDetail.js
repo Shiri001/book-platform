@@ -2,12 +2,16 @@ import { useParams, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from './AuthContext';
 import BookCover from "./BookCover";
+import AuthorModal from "./AuthorModal";
+
 
 function BookDetail() {
     const { id } = useParams();
     const [book, setBook] = useState(null);
     const [added, setAdded] = useState(false);
     const { isAuthenticated, token, openAuthModal } = useAuth();
+    const [spotlightAuthor, setSpotlightAuthor] = useState(null);
+
 
     // ML Recommendation States
     const [recommendations, setRecommendations] = useState([]);
@@ -141,9 +145,40 @@ function BookDetail() {
                             {book.title}
                         </h1>
 
-                        <p style={{ fontSize: "16px", color: "var(--text-secondary)", marginBottom: "16px" }}>
-                            by <strong style={{ color: "var(--text-primary)" }}>{book.author}</strong>
-                        </p>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px", flexWrap: "wrap" }}>
+                            <span style={{ fontSize: "16px", color: "var(--text-secondary)" }}>
+                                by <strong style={{ color: "var(--text-primary)" }}>{book.author}</strong>
+                            </span>
+                            <button
+                                onClick={() => setSpotlightAuthor(book.author)}
+                                style={{
+                                    background: "rgba(56, 189, 248, 0.08)",
+                                    border: "1px solid rgba(56, 189, 248, 0.25)",
+                                    color: "var(--accent-cyan)",
+                                    fontSize: "11px",
+                                    fontFamily: "var(--font-mono)",
+                                    padding: "4px 12px",
+                                    borderRadius: "14px",
+                                    cursor: "pointer",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "5px",
+                                    transition: "all 0.2s"
+                                }}
+                                onMouseEnter={e => {
+                                    e.currentTarget.style.background = "rgba(56, 189, 248, 0.16)";
+                                    e.currentTarget.style.borderColor = "var(--accent-cyan)";
+                                }}
+                                onMouseLeave={e => {
+                                    e.currentTarget.style.background = "rgba(56, 189, 248, 0.08)";
+                                    e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.25)";
+                                }}
+                            >
+                                👤 Author Bio & Works ↗
+                            </button>
+                        </div>
+
+
 
                         <div style={{
                             display: "inline-flex",
@@ -319,6 +354,10 @@ function BookDetail() {
                     </div>
                 )}
             </div>
+            <AuthorModal
+                authorName={spotlightAuthor}
+                onClose={() => setSpotlightAuthor(null)}
+            />
         </div>
     );
 }
