@@ -1,14 +1,29 @@
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import BookList from './BookList';
 import BookDetail from './BookDetail';
 import Shelf from './Shelf';
 import { useAuth } from './AuthContext';
 import AuthModal from './AuthModal';
 
-
 function Navigation() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout, isAuthenticated, openAuthModal } = useAuth();
+
+  const [quickSearch, setQuickSearch] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+
+  // Submit quick search from top navigation
+  const handleQuickSearch = (e) => {
+    e.preventDefault();
+    if (quickSearch.trim()) {
+      navigate(`/?search=${encodeURIComponent(quickSearch.trim())}`);
+      // Smoothly scroll down to catalog console if already on home
+      const el = document.getElementById("catalog-console");
+      if (el) el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
   return (
     <header style={{
@@ -21,10 +36,11 @@ function Navigation() {
       padding: "14px 32px",
       display: "flex",
       justifyContent: "space-between",
-      alignItems: "center"
+      alignItems: "center",
+      gap: "24px"
     }}>
-      {/* Brand Logo in Bodoni Moda Serif */}
-      <Link to="/" style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
+      {/* 1. Brand Logo in Bodoni Moda Serif */}
+      <Link to="/" style={{ display: "flex", alignItems: "baseline", gap: "12px", textDecoration: "none", flexShrink: 0 }}>
         <span style={{
           fontFamily: "var(--font-serif)",
           fontSize: "22px",
@@ -47,14 +63,81 @@ function Navigation() {
         </span>
       </Link>
 
-      {/* Nav Links & Auth Area */}
-      <nav style={{ display: "flex", gap: "24px", alignItems: "center" }}>
+      {/* 2. Global Quick Search Bar */}
+      <form
+        onSubmit={handleQuickSearch}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          background: isFocused ? "rgba(20, 20, 26, 0.95)" : "rgba(255, 255, 255, 0.04)",
+          border: isFocused ? "1px solid var(--border-focus)" : "1px solid var(--border-hairline)",
+          borderRadius: "24px",
+          padding: "6px 14px",
+          width: "100%",
+          maxWidth: isFocused ? "340px" : "260px",
+          transition: "all 0.25s ease",
+          boxShadow: isFocused ? "0 0 16px rgba(56, 189, 248, 0.15)" : "none"
+        }}
+      >
+        <span style={{ fontSize: "14px", color: "var(--text-muted)", userSelect: "none" }}>
+          ⌕
+        </span>
+        <input
+          type="text"
+          value={quickSearch}
+          onChange={e => setQuickSearch(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholder="Quick search catalog..."
+          style={{
+            background: "transparent",
+            border: "none",
+            outline: "none",
+            color: "var(--text-primary)",
+            fontSize: "13px",
+            fontFamily: "var(--font-sans)",
+            width: "100%"
+          }}
+        />
+        {quickSearch && (
+          <button
+            type="button"
+            onClick={() => setQuickSearch('')}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--text-muted)",
+              cursor: "pointer",
+              fontSize: "11px",
+              padding: 0
+            }}
+          >
+            ✕
+          </button>
+        )}
+        <span style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: "10px",
+          color: "var(--text-muted)",
+          border: "1px solid rgba(255, 255, 255, 0.1)",
+          borderRadius: "3px",
+          padding: "1px 5px",
+          userSelect: "none"
+        }}>
+          ↵
+        </span>
+      </form>
+
+      {/* 3. Nav Links & Auth Area */}
+      <nav style={{ display: "flex", gap: "24px", alignItems: "center", flexShrink: 0 }}>
         <Link
           to="/"
           style={{
             fontSize: "14px",
             color: location.pathname === "/" ? "var(--text-primary)" : "var(--text-muted)",
             fontWeight: location.pathname === "/" ? 600 : 400,
+            textDecoration: "none",
             transition: "color 0.2s"
           }}
         >
@@ -66,6 +149,7 @@ function Navigation() {
             fontSize: "14px",
             color: location.pathname === "/shelf" ? "var(--text-primary)" : "var(--text-muted)",
             fontWeight: location.pathname === "/shelf" ? 600 : 400,
+            textDecoration: "none",
             transition: "color 0.2s"
           }}
         >
@@ -198,7 +282,6 @@ function Navigation() {
   );
 }
 
-
 function App() {
   return (
     <BrowserRouter>
@@ -216,6 +299,5 @@ function App() {
     </BrowserRouter>
   );
 }
-
 
 export default App;
