@@ -1,19 +1,41 @@
 const { Shelf, Book } = require("../models");
 
-// POST /api/shelf — Add book to shelf
+// POST /api/shelf — Add or update book on user's shelf
 const addToShelf = async (req, res) => {
     try {
         const { bookId, status } = req.body;
-        const entry = await Shelf.create({
-            BookId: bookId,
-            userId: req.user.id,
-            status: status
+        const numericBookId = parseInt(bookId);
+
+        if (!numericBookId) {
+            return res.status(400).json({ message: "Invalid bookId provided" });
+        }
+
+        // Upsert shelf entry (one entry per user per book)
+        let [entry, created] = await Shelf.findOrCreate({
+            where: {
+                bookId: numericBookId,
+                userId: req.user.id
+            },
+            defaults: {
+                bookId: numericBookId,
+                userId: req.user.id,
+                status: status || "want-to-read"
+            }
         });
-        res.status(201).json(entry);
+
+        if (!created && status) {
+            entry.status = status;
+            await entry.save();
+        }
+
+        const enriched = await Shelf.findByPk(entry.id, { include: Book });
+        res.status(created ? 201 : 200).json(enriched);
     } catch (error) {
+        console.error("Failed to add book to shelf:", error);
         res.status(500).json({ message: "Failed to add book to shelf" });
     }
 };
+
 
 // GET /api/shelf — Get current user's shelf
 const getShelf = async (req, res) => {

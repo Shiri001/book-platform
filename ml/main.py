@@ -6,7 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 import pandas as pd
 
+from typing import Optional
+from pydantic import BaseModel, Field
 from embeddings_recommender import load_embeddings_artifacts, get_recommendations
+from sentiment_analyzer import analyze_review_sentiment
 
 # Windows console encoding fix
 if sys.platform == "win32":
@@ -112,6 +115,17 @@ def recommend_books(
         "count": len(results),
         "recommendations": results
     }
+
+class SentimentRequest(BaseModel):
+    text: str = Field(..., description="Review text to analyze")
+    rating: Optional[int] = Field(None, ge=1, le=5, description="Star rating from 1 to 5")
+
+@app.post("/sentiment/analyze")
+def analyze_sentiment(payload: SentimentRequest):
+    """
+    Analyzes sentiment polarity of review text and detects rating-sentiment dissonance.
+    """
+    return analyze_review_sentiment(payload.text, payload.rating)
 
 if __name__ == "__main__":
     import uvicorn

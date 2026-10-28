@@ -5,3 +5,4 @@ sentence-transformers>=2.2.0
 torch
 fastapi>=0.110.0
 uvicorn>=0.28.0
+nltk>=3.9.0
