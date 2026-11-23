@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { getBooks, getBookById, getRecommendations } = require("../controllers/bookController");
 const { getBookReviews, getBookSentimentSummary, createReview } = require("../controllers/reviewController");
+const { discussBook } = require("../controllers/chatController");
 const { requireAuth } = require("../middlewares/authMiddleware");
 
 // Catalog & Recommendations
@@ -13,5 +14,8 @@ router.get("/:id/recommendations", getRecommendations);
 router.get("/:id/reviews", getBookReviews);
 router.get("/:id/sentiment-summary", getBookSentimentSummary);
 router.post("/:id/reviews", requireAuth, createReview);
+
+// Literary RAG Discussion Companion (Grounded in Goodreads Data)
+router.post("/:id/chat", discussBook);
 
 module.exports = router;

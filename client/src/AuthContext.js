@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { API_BASE_URL } from "./config";
 
 const AuthContext = createContext();
 
@@ -32,7 +33,7 @@ export function AuthProvider({ children }) {
 
     // 2. Google OAuth Login
     const loginWithGoogle = async (credentialResponse) => {
-        const res = await fetch("http://localhost:3000/api/auth/google", {
+        const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ credential: credentialResponse.credential })
@@ -47,7 +48,7 @@ export function AuthProvider({ children }) {
 
     // 3. Email & Password Login
     const loginWithEmail = async (email, password) => {
-        const res = await fetch("http://localhost:3000/api/auth/login", {
+        const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, password })
@@ -61,7 +62,7 @@ export function AuthProvider({ children }) {
 
     // 4. Email & Password Registration
     const registerWithEmail = async (name, email, password) => {
-        const res = await fetch("http://localhost:3000/api/auth/register", {
+        const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name, email, password })

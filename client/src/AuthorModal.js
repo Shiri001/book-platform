@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import BookCover from "./BookCover";
+import { API_BASE_URL } from "./config";
 
 function AuthorModal({ authorName, onClose }) {
     const [data, setData] = useState(null);
@@ -10,7 +11,7 @@ function AuthorModal({ authorName, onClose }) {
         if (!authorName) return;
 
         setLoading(true);
-        fetch(`http://localhost:3000/api/authors/${encodeURIComponent(authorName)}`)
+        fetch(`${API_BASE_URL}/api/authors/${encodeURIComponent(authorName)}`)
             .then(res => res.json())
             .then(result => {
                 setData(result);

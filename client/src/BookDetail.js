@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from './AuthContext';
 import BookCover from "./BookCover";
 import AuthorModal from "./AuthorModal";
+import BookChat from "./BookChat";
+import { API_BASE_URL } from "./config";
 
 function BookDetail() {
     const { id } = useParams();
@@ -25,13 +27,24 @@ function BookDetail() {
     const [submittingReview, setSubmittingReview] = useState(false);
     const [reviewMessage, setReviewMessage] = useState(null);
 
+    // AI Literary Companion Drawer State
+    const [isChatOpen, setIsChatOpen] = useState(false);
+
+    const handleOpenChat = () => {
+        if (!isAuthenticated) {
+            openAuthModal("signin");
+            return;
+        }
+        setIsChatOpen(true);
+    };
+
     // 1. Fetch Book Details from PostgreSQL
     useEffect(() => {
         setBook(null);
         setAdded(false);
         setReviewMessage(null);
 
-        fetch(`http://localhost:3000/api/books/${id}`)
+        fetch(`${API_BASE_URL}/api/books/${id}`)
             .then(res => {
                 if (!res.ok) throw new Error("Not Found");
                 return res.json();
@@ -42,7 +55,7 @@ function BookDetail() {
 
     // 2. Fetch Reviews & Sentiment Summary
     const loadReviewsAndSentiment = useCallback(() => {
-        fetch(`http://localhost:3000/api/books/${id}/reviews`)
+        fetch(`${API_BASE_URL}/api/books/${id}/reviews`)
             .then(res => res.json())
             .then(data => {
                 const list = data.reviews || [];
@@ -56,7 +69,7 @@ function BookDetail() {
             })
             .catch(err => console.error("Failed to load reviews:", err));
 
-        fetch(`http://localhost:3000/api/books/${id}/sentiment-summary`)
+        fetch(`${API_BASE_URL}/api/books/${id}/sentiment-summary`)
             .then(res => res.json())
             .then(data => setSentimentSummary(data))
             .catch(err => console.error("Failed to load sentiment summary:", err));
@@ -70,7 +83,7 @@ function BookDetail() {
     // 3. Fetch ML Recommendations through Express Gateway
     useEffect(() => {
         setLoadingRecs(true);
-        fetch(`http://localhost:3000/api/books/${id}/recommendations?mode=${recMode}&topN=5`)
+        fetch(`${API_BASE_URL}/api/books/${id}/recommendations?mode=${recMode}&topN=5`)
             .then(res => res.json())
             .then(data => {
                 setRecommendations(data.recommendations || []);
@@ -88,7 +101,7 @@ function BookDetail() {
             openAuthModal("signin");
             return;
         }
-        fetch("http://localhost:3000/api/shelf", {
+        fetch(`${API_BASE_URL}/api/shelf`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -115,7 +128,7 @@ function BookDetail() {
         setReviewMessage(null);
 
         try {
-            const res = await fetch(`http://localhost:3000/api/books/${id}/reviews`, {
+            const res = await fetch(`${API_BASE_URL}/api/books/${id}/reviews`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -136,7 +149,7 @@ function BookDetail() {
                 });
                 loadReviewsAndSentiment();
                 // Refresh book average rating
-                fetch(`http://localhost:3000/api/books/${id}`)
+                fetch(`${API_BASE_URL}/api/books/${id}`)
                     .then(r => r.json())
                     .then(b => setBook(b))
                     .catch(() => { });
@@ -297,13 +310,13 @@ function BookDetail() {
                         </div>
                     </div>
 
-                    {/* Shelf Button */}
-                    <div style={{ marginTop: "32px", paddingTop: "24px", borderTop: "1px solid var(--border-hairline)" }}>
+                    {/* Shelf & AI Companion Buttons */}
+                    <div style={{ marginTop: "32px", paddingTop: "24px", borderTop: "1px solid var(--border-hairline)", display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
                         <button
                             onClick={() => addToShelf(book.id, "want-to-read")}
                             disabled={added}
                             style={{
-                                padding: "10px 24px",
+                                padding: "10px 22px",
                                 background: added ? "rgba(74, 222, 128, 0.15)" : "var(--text-primary)",
                                 color: added ? "var(--accent-green)" : "var(--bg-primary)",
                                 border: added ? "1px solid var(--accent-green)" : "none",
@@ -317,11 +330,108 @@ function BookDetail() {
                         >
                             {added ? "✓ Added to Personal Shelf" : "+ Add to Shelf"}
                         </button>
+
+                        <button
+                            onClick={handleOpenChat}
+                            style={{
+                                padding: "10px 20px",
+                                background: "linear-gradient(135deg, rgba(56, 189, 248, 0.12) 0%, rgba(139, 92, 246, 0.12) 100%)",
+                                border: "1px solid rgba(56, 189, 248, 0.35)",
+                                color: "var(--accent-cyan)",
+                                borderRadius: "8px",
+                                fontFamily: "var(--font-sans)",
+                                fontWeight: 600,
+                                fontSize: "14px",
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                transition: "all 0.2s"
+                            }}
+                            onMouseEnter={e => {
+                                e.currentTarget.style.background = "linear-gradient(135deg, rgba(56, 189, 248, 0.22) 0%, rgba(139, 92, 246, 0.22) 100%)";
+                                e.currentTarget.style.borderColor = "var(--accent-cyan)";
+                            }}
+                            onMouseLeave={e => {
+                                e.currentTarget.style.background = "linear-gradient(135deg, rgba(56, 189, 248, 0.12) 0%, rgba(139, 92, 246, 0.12) 100%)";
+                                e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.35)";
+                            }}
+                        >
+                            <span>💬</span> Discuss with AI Companion
+                            <span style={{
+                                fontSize: "9px",
+                                fontFamily: "var(--font-mono)",
+                                background: "rgba(56, 189, 248, 0.2)",
+                                padding: "2px 6px",
+                                borderRadius: "10px",
+                                letterSpacing: "0.5px"
+                            }}>
+                                GEMINI
+                            </span>
+                        </button>
                     </div>
                 </div>
             </div>
 
-            {/* 2. Literary Reception & Sentiment Pulse Section */}
+            {/* Slide-out Literary Discussion Drawer */}
+            {isChatOpen && (
+                <BookChat
+                    bookId={book.id}
+                    bookTitle={book.title}
+                    bookAuthor={book.author}
+                    isDrawer={true}
+                    onClose={() => setIsChatOpen(false)}
+                />
+            )}
+
+            {/* Floating Quick-Access Launcher Button (Bottom Right) */}
+            <button
+                onClick={handleOpenChat}
+                title="Open Literary Discussion Companion"
+                style={{
+                    position: "fixed",
+                    bottom: "28px",
+                    right: "28px",
+                    zIndex: 900,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "12px 20px",
+                    background: "linear-gradient(135deg, rgba(20, 24, 33, 0.95) 0%, rgba(10, 12, 18, 0.98) 100%)",
+                    border: "1px solid rgba(56, 189, 248, 0.4)",
+                    borderRadius: "30px",
+                    color: "#fff",
+                    fontFamily: "var(--font-sans)",
+                    fontWeight: 600,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    boxShadow: "0 8px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgba(56, 189, 248, 0.25)",
+                    backdropFilter: "blur(12px)",
+                    transition: "all 0.25s ease"
+                }}
+                onMouseEnter={e => {
+                    e.currentTarget.style.transform = "translateY(-3px)";
+                    e.currentTarget.style.borderColor = "var(--accent-cyan)";
+                }}
+                onMouseLeave={e => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.4)";
+                }}
+            >
+                <span style={{ fontSize: "16px" }}>💬</span>
+                <span>Discuss Book with AI</span>
+                <span style={{
+                    fontSize: "9px",
+                    fontFamily: "var(--font-mono)",
+                    background: "rgba(56, 189, 248, 0.2)",
+                    color: "var(--accent-cyan)",
+                    padding: "2px 6px",
+                    borderRadius: "10px",
+                    border: "1px solid rgba(56, 189, 248, 0.3)"
+                }}>
+                    GEMINI
+                </span>
+            </button>
             <section style={{
                 background: "linear-gradient(180deg, rgba(20, 20, 26, 0.7) 0%, rgba(12, 12, 16, 0.9) 100%)",
                 border: "1px solid var(--border-hairline)",

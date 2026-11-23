@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { GoogleLogin } from '@react-oauth/google';
 import BookCover from './BookCover';
+import { API_BASE_URL } from './config';
 
 const GENRES = ["All", "Classics", "Fiction", "Historical Fiction", "Dystopia", "Fantasy", "Romance", "Science Fiction"];
 
@@ -65,7 +66,7 @@ function BookList() {
     if (authorFilter && authorFilter.trim()) params.set('author', authorFilter.trim());
     if (sortBy && sortBy !== "featured") params.set('sortBy', sortBy);
 
-    fetch(`http://localhost:3000/api/books?${params.toString()}`)
+    fetch(`${API_BASE_URL}/api/books?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
         setBooks(data.books || []);

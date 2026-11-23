@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import BookCover from "./BookCover";
 import AuthorModal from "./AuthorModal";
+import BookChat from "./BookChat";
+import { API_BASE_URL } from "./config";
 
 function Shelf() {
     const [shelf, setShelf] = useState([]);
@@ -28,7 +30,7 @@ function Shelf() {
             return;
         }
 
-        fetch("http://localhost:3000/api/shelf", {
+        fetch(`${API_BASE_URL}/api/shelf`, {
             headers: {
                 "Authorization": `Bearer ${token}`
             }
@@ -78,7 +80,7 @@ function Shelf() {
         }));
 
         try {
-            await fetch(`http://localhost:3000/api/shelf/${id}`, {
+            await fetch(`${API_BASE_URL}/api/shelf/${id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -118,7 +120,7 @@ function Shelf() {
         setNotePage("");
 
         try {
-            const res = await fetch(`http://localhost:3000/api/shelf/${selectedId}/notes`, {
+            const res = await fetch(`${API_BASE_URL}/api/shelf/${selectedId}/notes`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -150,7 +152,7 @@ function Shelf() {
         }));
 
         try {
-            await fetch(`http://localhost:3000/api/shelf/${selectedId}/notes/${noteId}`, {
+            await fetch(`${API_BASE_URL}/api/shelf/${selectedId}/notes/${noteId}`, {
                 method: "DELETE",
                 headers: { "Authorization": `Bearer ${token}` }
             });
@@ -172,7 +174,7 @@ function Shelf() {
         });
 
         try {
-            await fetch(`http://localhost:3000/api/shelf/${id}`, {
+            await fetch(`${API_BASE_URL}/api/shelf/${id}`, {
                 method: "DELETE",
                 headers: { "Authorization": `Bearer ${token}` }
             });
@@ -523,6 +525,26 @@ function Shelf() {
                                                 >
                                                     👤 Author Bio & Works ↗
                                                 </button>
+
+                                                <button
+                                                    onClick={() => setStudioTab("chat")}
+                                                    style={{
+                                                        background: studioTab === "chat" ? "rgba(56, 189, 248, 0.2)" : "rgba(56, 189, 248, 0.08)",
+                                                        border: "1px solid rgba(56, 189, 248, 0.35)",
+                                                        color: "var(--accent-cyan)",
+                                                        fontSize: "11px",
+                                                        fontFamily: "var(--font-mono)",
+                                                        padding: "3px 10px",
+                                                        borderRadius: "12px",
+                                                        cursor: "pointer",
+                                                        transition: "all 0.2s",
+                                                        display: "inline-flex",
+                                                        alignItems: "center",
+                                                        gap: "4px"
+                                                    }}
+                                                >
+                                                    <span>💬</span> Discuss with AI ↗
+                                                </button>
                                             </div>
                                         </div>
 
@@ -738,6 +760,26 @@ function Shelf() {
                                     >
                                         📝 Notes & Quotes ({selectedNotes.length})
                                     </button>
+
+                                    <button
+                                        onClick={() => setStudioTab("chat")}
+                                        style={{
+                                            background: studioTab === "chat" ? "rgba(56, 189, 248, 0.15)" : "transparent",
+                                            border: studioTab === "chat" ? "1px solid rgba(56, 189, 248, 0.4)" : "1px solid transparent",
+                                            color: studioTab === "chat" ? "var(--accent-cyan)" : "var(--text-muted)",
+                                            padding: "6px 14px",
+                                            borderRadius: "8px",
+                                            fontSize: "12px",
+                                            fontFamily: "var(--font-mono)",
+                                            cursor: "pointer",
+                                            transition: "all 0.2s",
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            gap: "6px"
+                                        }}
+                                    >
+                                        <span>💬</span> AI Literary Companion
+                                    </button>
                                 </div>
 
                                 {/* TAB 1: Synopsis Container */}
@@ -948,6 +990,18 @@ function Shelf() {
                                                 ))
                                             )}
                                         </div>
+                                    </div>
+                                )}
+
+                                {/* TAB 3: AI Literary Companion */}
+                                {studioTab === "chat" && (
+                                    <div style={{ animation: "fadeIn 0.2s ease" }}>
+                                        <BookChat
+                                            bookId={selectedBook.id}
+                                            bookTitle={selectedBook.title}
+                                            bookAuthor={selectedBook.author}
+                                            isDrawer={false}
+                                        />
                                     </div>
                                 )}
                             </div>
